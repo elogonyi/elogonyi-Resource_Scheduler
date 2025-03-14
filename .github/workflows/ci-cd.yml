@@ -1,37 +1,48 @@
-from flask 
-import Flask, request, jsonify
-from scheduler 
-import ResourceScheduler
-import threading
-import time
+name: CI/CD Pipeline for Resource Scheduler
 
-app = Flask(__name__)
-scheduler = ResourceScheduler()
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
-# Simulate real-time updates every 5 seconds
-def update_status():
-    while True:
-        scheduler.update_agent_status()
-        time.sleep(5)
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
 
-@app.route('/add_customer', methods=['POST'])
-def add_customer():
-    data = request.json
-    customer_id = data['id']
-    service_time = data['service_time']
-    priority = data['priority']
-    scheduler.add_customer(customer_id, service_time, priority)
-    return jsonify({"message": "Customer added", "customer": data}), 201
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-@app.route('/assign_tasks', methods=['GET'])
-def assign_tasks():
-    scheduler.assign_tasks()
-    return jsonify({"message": "Tasks assigned", "agents": scheduler.get_agents_status()}), 200
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
 
-@app.route('/status', methods=['GET'])
-def status():
-    return jsonify({"agents": scheduler.get_agents_status()}), 200
+    - name: Install Dependencies
+      run: |
+        pip install -r requirements.txt
 
-if __name__ == '__main__':
-    threading.Thread(target=update_status, daemon=True).start()
-    app.run(host='0.0.0.0', port=5000)
+    - name: Run Tests
+      run: |
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
+        pytest tests/
+
+    - name: Login to Docker Hub
+      run: |
+        if [[ -z "${{ secrets.DOCKER_USERNAME }}" || -z "${{ secrets.DOCKER_PASSWORD }}" ]]; then
+          echo "❌ Error: Docker credentials are missing!"
+          exit 1
+        fi
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    - name: Build Docker Image
+      run: docker build -t elogonyi/resource-scheduler .
+
+    - name: Push Docker Image to Docker Hub
+      run: docker push elogonyi/resource-scheduler
+
+    - name: Deploy to Cloud
+      run: echo "Deployment step here (e.g., AWS, DigitalOcean, etc.)"
