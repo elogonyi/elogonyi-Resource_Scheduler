@@ -1,7 +1,5 @@
-from flask 
-import Flask, request, jsonify
-from scheduler 
-import ResourceScheduler
+from flask import Flask, request, jsonify
+from scheduler import ResourceScheduler
 import threading
 import time
 
