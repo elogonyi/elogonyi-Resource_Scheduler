@@ -1,17 +1,23 @@
-# Use official Python image
-FROM python:3.10
+# Use an official Python image as the base
+FROM python:3.9-slim
 
-# Set working directory
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy all files
+# Copy the requirements file into the container
+COPY requirements.txt .
+
+# Install the dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application code into the container
 COPY . .
 
-# Install dependencies
-RUN pip install -r requirements.txt
+# Set the environment variable for Python
+ENV PYTHONUNBUFFERED=1
 
-# Expose port
+# Expose the port the app runs on
 EXPOSE 5000
 
-# Run the application
-CMD ["python", "app/resource_scheduler.py"]
+# Define the command to run the application
+CMD ["python", "app/main.py"]
